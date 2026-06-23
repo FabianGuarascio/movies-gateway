@@ -13,8 +13,8 @@ import { RatingsController } from './ratings/ratings.controller';
         name: 'MOVIES_SERVICE',
         transport: Transport.TCP,
         options: {
-          host: 'localhost',
-          port: 3001,
+          host: process.env.MOVIES_SERVICE_HOST ?? 'localhost',
+          port: parseInt(process.env.MOVIES_SERVICE_PORT ?? '3001', 10),
         },
       },
       {
@@ -22,7 +22,7 @@ import { RatingsController } from './ratings/ratings.controller';
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['localhost:9092'],
+            brokers: (process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','),
           },
           consumer: {
             groupId: 'ratings-consumer-gateway',
@@ -34,7 +34,7 @@ import { RatingsController } from './ratings/ratings.controller';
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['localhost:9092'],
+            brokers: (process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','),
           },
           consumer: {
             groupId: 'notifications-consumer-gateway',
