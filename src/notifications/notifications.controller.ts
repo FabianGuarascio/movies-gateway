@@ -7,26 +7,14 @@ import {
   Param,
   Delete,
   Inject,
-  OnModuleInit,
 } from '@nestjs/common';
-import { ClientKafka } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Controller('notifications')
-export class NotificationsController implements OnModuleInit {
+export class NotificationsController {
   constructor(
-    @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientKafka,
+    @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientProxy,
   ) {}
-
-  async onModuleInit() {
-    [
-      'createNotification',
-      'findAllNotifications',
-      'findOneNotification',
-      'updateNotification',
-      'removeNotification',
-    ].forEach((pattern) => this.client.subscribeToResponseOf(pattern));
-    await this.client.connect();
-  }
 
   @Post()
   create(@Body() createNotificationDto: Record<string, unknown>) {

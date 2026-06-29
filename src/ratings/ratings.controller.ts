@@ -7,40 +7,54 @@ import {
   Param,
   Delete,
   Inject,
-  OnModuleInit,
 } from '@nestjs/common';
-import { ClientKafka } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+
+interface Rating {
+  id: number;
+  movieId: number;
+  score: number;
+}
 
 @Controller('ratings')
-export class RatingsController implements OnModuleInit {
+export class RatingsController {
   constructor(
-    @Inject('RATINGS_SERVICE') private readonly client: ClientKafka,
+    @Inject('RATINGS_SERVICE') private readonly ratingsClient: ClientProxy,
+    @Inject('MOVIES_SERVICE') private readonly moviesClient: ClientProxy,
+    @Inject('NOTIFICATIONS_SERVICE')
+    private readonly notificationsClient: ClientProxy,
   ) {}
 
-  async onModuleInit() {
-    [
-      'createRating',
-      'findAllRatings',
-      'findOneRating',
-      'updateRating',
-      'removeRating',
-    ].forEach((pattern) => this.client.subscribeToResponseOf(pattern));
-    await this.client.connect();
-  }
-
   @Post()
-  create(@Body() createRatingDto: Record<string, unknown>) {
-    return this.client.send('createRating', createRatingDto);
+  async create(@Body() createRatingDto: Record<string, unknown>) {
+    const rating = await firstValueFrom(
+      this.ratingsClient.send<Rating>('createRating', createRatingDto),
+    );
+    await firstValueFrom(
+      this.moviesClient.send('movies.updateAverageRating', {
+        movieId: rating.movieId,
+        score: rating.score,
+      }),
+    );
+    await firstValueFrom(
+      this.notificationsClient.send('createNotification', {
+        type: 'push',
+        recipient: 'all',
+        message: `New rating ${rating.score} added for movie #${rating.movieId}`,
+      }),
+    );
+    return rating;
   }
 
   @Get()
   findAll() {
-    return this.client.send('findAllRatings', {});
+    return this.ratingsClient.send('findAllRatings', {});
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.client.send('findOneRating', +id);
+    return this.ratingsClient.send('findOneRating', +id);
   }
 
   @Patch(':id')
@@ -48,11 +62,14 @@ export class RatingsController implements OnModuleInit {
     @Param('id') id: string,
     @Body() updateRatingDto: Record<string, unknown>,
   ) {
-    return this.client.send('updateRating', { id: +id, ...updateRatingDto });
+    return this.ratingsClient.send('updateRating', {
+      id: +id,
+      ...updateRatingDto,
+    });
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.client.send('removeRating', +id);
+    return this.ratingsClient.send('removeRating', +id);
   }
 }

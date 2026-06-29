@@ -9,24 +9,44 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+
+interface Movie {
+  id: number;
+  title: string;
+}
 
 @Controller('movies')
 export class MoviesController {
-  constructor(@Inject('MOVIES_SERVICE') private readonly client: ClientProxy) {}
+  constructor(
+    @Inject('MOVIES_SERVICE') private readonly moviesClient: ClientProxy,
+    @Inject('NOTIFICATIONS_SERVICE')
+    private readonly notificationsClient: ClientProxy,
+  ) {}
 
   @Post()
-  create(@Body() createMovieDto: Record<string, unknown>) {
-    return this.client.send('movies.create', createMovieDto);
+  async create(@Body() createMovieDto: Record<string, unknown>) {
+    const movie = await firstValueFrom(
+      this.moviesClient.send<Movie>('movies.create', createMovieDto),
+    );
+    await firstValueFrom(
+      this.notificationsClient.send('createNotification', {
+        type: 'push',
+        recipient: 'all',
+        message: `New movie added: ${movie.title}`,
+      }),
+    );
+    return movie;
   }
 
   @Get()
   findAll() {
-    return this.client.send('movies.findAll', {});
+    return this.moviesClient.send('movies.findAll', {});
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.client.send('movies.findOne', +id);
+    return this.moviesClient.send('movies.findOne', +id);
   }
 
   @Patch(':id')
@@ -34,11 +54,14 @@ export class MoviesController {
     @Param('id') id: string,
     @Body() updateMovieDto: Record<string, unknown>,
   ) {
-    return this.client.send('movies.update', { id: +id, updateMovieDto });
+    return this.moviesClient.send('movies.update', {
+      id: +id,
+      updateMovieDto,
+    });
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.client.send('movies.remove', +id);
+    return this.moviesClient.send('movies.remove', +id);
   }
 }

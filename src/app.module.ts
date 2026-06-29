@@ -19,26 +19,18 @@ import { RatingsController } from './ratings/ratings.controller';
       },
       {
         name: 'RATINGS_SERVICE',
-        transport: Transport.KAFKA,
+        transport: Transport.TCP,
         options: {
-          client: {
-            brokers: (process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','),
-          },
-          consumer: {
-            groupId: 'ratings-consumer-gateway',
-          },
+          host: process.env.RATINGS_SERVICE_HOST ?? 'localhost',
+          port: parseInt(process.env.RATINGS_SERVICE_PORT ?? '3002', 10),
         },
       },
       {
         name: 'NOTIFICATIONS_SERVICE',
-        transport: Transport.KAFKA,
+        transport: Transport.TCP,
         options: {
-          client: {
-            brokers: (process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','),
-          },
-          consumer: {
-            groupId: 'notifications-consumer-gateway',
-          },
+          host: process.env.NOTIFICATIONS_SERVICE_HOST ?? 'localhost',
+          port: parseInt(process.env.NOTIFICATIONS_SERVICE_PORT ?? '3003', 10),
         },
       },
     ]),
